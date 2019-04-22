@@ -20,6 +20,7 @@ classes = ['air_conditioner','car_horn','children_playing','dog_bark','drilling'
 
 
 app = Flask(__name__)
+counter = 0
 
 APP_ROOT = os.path.dirname(os.path.abspath(__file__))
 #C:\Users\Ranjeet\Downloads\Ranjeet Stuff\Implementation\fastai-v3-master\fastai-v3-master\app
@@ -49,21 +50,23 @@ def setup_learner():
 	except:
 		print("error")
 
-def extract_features(filename):
-    #print(filename)
+def extract_features(filename,counter):
+    new_filename = filename.split(".")[0]
     samples,sample_rate = librosa.load(filename)
     fig = plt.figure(figsize=[0.72,0.72])
     ax  = fig.add_subplot(111)
     ax.axes.get_xaxis().set_visible(False)
     ax.axes.get_yaxis().set_visible(False)
     file_name = path/Path('spectograms/')/Path(filename).name.replace('.wav','.png')
+    new_file = path/Path('spectograms/')/Path(file_name).name.replace(new_filename,str(counter))
     S = librosa.feature.melspectrogram(y=samples,sr=sample_rate)
     librosa.display.specshow(librosa.power_to_db(S, ref=np.max))
-    plt.savefig(file_name, dpi=400, bbox_inches='tight',pad_inches=0)
-    #print(file_name)
+    plt.savefig(new_file, dpi=400, bbox_inches='tight',pad_inches=0)
     plt.close()
+    print(new_file)
+    counter+=1
     return str(file_name)
-
+	
 learn = setup_learner()
 
 @app.route('/analyze', methods=['POST'])
@@ -76,11 +79,11 @@ def analyze():
 		#print(filename)
 		file.save(filename)
 		shutil.move(APP_ROOT+"/"+filename,target)
-		image_path = extract_features(target+filename)
+		image_path = extract_features(target+filename,counter)
 		img = open_image(image_path)
 		prediction = learn.predict(img)[0]
 	print(image_path)
 	return jsonify({"result":str(prediction)})
 	
 if __name__ == "__main__":
-	app.run(debug=True)
+	app.run(host='0.0.0.0',port=80)
